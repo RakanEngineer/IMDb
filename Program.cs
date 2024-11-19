@@ -19,11 +19,14 @@ namespace IMDb
             bool shouldNotExit = true;
             while (shouldNotExit)
             {
-                WriteLine("1. Lägg till en skådespelare");
+                WriteLine("1. Lägg till skådespelare");
                 WriteLine("2. Lista skådespelare");
-                WriteLine("3. Lägg till en filmbolag");
-                WriteLine("4. Lägg till en film");
-                WriteLine("5. Exit");
+                WriteLine("3. Lägg till filmbolag");
+                WriteLine("4. Lägg till film");
+                WriteLine("5. Lägg till skådespelare till film");
+                WriteLine("6. Lista filmer");
+                
+                WriteLine("7. Exit");
                 ConsoleKeyInfo keyPressed = ReadKey(true);
                 Clear();
                 switch (keyPressed.Key)
@@ -45,34 +48,110 @@ namespace IMDb
 
                     case ConsoleKey.D4:
                     case ConsoleKey.NumPad4:
-                        AddFilm();
+                        AddMovie();
                         break;
 
                     case ConsoleKey.D5:
                     case ConsoleKey.NumPad5:
+                        AddActorToMovie();
+                        break;
+                    case ConsoleKey.D6:
+                    case ConsoleKey.NumPad6:
+                        ListMovies();
+                        break;
+                    case ConsoleKey.D7:
+                    case ConsoleKey.NumPad7:
                         shouldNotExit = false;
                         break;
                 }
                 Clear();
             }
         }
-        private static void AddFilm()
+
+        private static void ListMovies()
+        {
+            WriteLine("Lista filmer");
+            var movies = context.Movies.Include(m => m.MovieActors).ThenInclude(ma => ma.Actor).ToList();
+            foreach (var movie in movies)
+            {
+                Console.WriteLine($"\nTitle: {movie.Title}");
+                Console.WriteLine($"Director: {movie.Director}");
+                Console.WriteLine($"Year: {movie.ReleaseYear}");
+                Console.WriteLine("Actors:");
+                foreach (var actor in movie.MovieActors)
+                {
+                    Console.WriteLine($"  {actor.Actor.FirstName} {actor.Actor.LastName}");
+                }
+                Console.WriteLine("---------------------------------------------------");
+                Console.WriteLine("Tryck Esc för att återgå till huvudmenyn.");
+                while (Console.ReadKey(true).Key != ConsoleKey.Escape) { }
+                //ConsoleKeyInfo keyPressed;
+                //bool escapePressed = false;
+                //do
+                //{
+                //    keyPressed = ReadKey(true);
+                //    if (keyPressed.Key == ConsoleKey.Escape)
+                //    {
+                //        escapePressed = true;
+                //    }
+                //} while (!escapePressed);
+            }
+        }
+
+        private static void AddActorToMovie()
+        {
+            Console.WriteLine("\nEnter Actor's Social Security Number:");
+            var ssn = Console.ReadLine();
+            Console.WriteLine("Enter Movie Title:");
+            var title = Console.ReadLine();
+
+            var actor = context.Actors.FirstOrDefault(a => a.SocialSecurityNumber == ssn);
+            var movie = context.Movies.FirstOrDefault(m => m.Title == title);
+
+            if (actor == null)
+            {
+                Console.WriteLine("Actor not found.");
+                return;
+            }
+
+            if (movie == null)
+            {
+                Console.WriteLine("Movie not found.");
+                return;
+            }
+
+            //if (movie.MovieActors.Contains(actor))
+            //{
+            //    Console.WriteLine("Actor is already associated with this movie.");
+            //    return;
+            //}
+            var movieActor = new MovieActor
+            {
+                ActorId = actor.Id,
+                MovieId = movie.Id
+            };
+            movie.MovieActors.Add(movieActor);
+            context.SaveChanges();
+            Console.WriteLine("Actor added to movie.");
+        }
+
+        private static void AddMovie()
         {
             bool isCorrect = false;
             do
             {
                 Write("Titel: ");
-                string Titel = ReadLine();
+                string title = ReadLine();
                 Write("Beskrivning: ");
-                string Beskrivning = ReadLine();
+                string description = ReadLine();
                 Write("År: ");
-                string År = ReadLine();
+                string releaseYear = ReadLine();
                 Write("Genre: ");
                 string Genre = ReadLine();
                 Write("Regissör: ");
-                string Regissör = ReadLine();
+                string director = ReadLine();
                 Write("Filmbolag: ");
-                string name = ReadLine();
+                string filmCompanyName = ReadLine();
                 WriteLine();
                 WriteLine("Är detta korrekt? (J)a eller (N)ej");
                 ConsoleKeyInfo keyPressed;
@@ -87,13 +166,15 @@ namespace IMDb
                 {
                     isCorrect = true;
                     Clear();
-                    if (context.Film.Any(x => x.Titel == Titel))
+                    var filmCompany = context.FilmCompanies.FirstOrDefault(fc => fc.Name == filmCompanyName);
+
+                    if (context.Movies.Any(x => x.Title == title))
                     {
                         Clear();
                         WriteLine("Film finns redan");
                         Thread.Sleep(2000); // 2 sec 
                     }
-                    else if (!context.FilmCompany.Any(x => x.Name == name))
+                    else if (!context.FilmCompanies.Any(x => x.Name == filmCompanyName))
                     {
                         Clear();
                         WriteLine("Ogiltigt filmbolag");
@@ -102,11 +183,11 @@ namespace IMDb
                     else
                     {
                         Clear();
-                        Film film = new Film(Titel, Beskrivning, År, Genre, Regissör);
+                        Movie movie = new Movie(title, description, releaseYear, Genre, director, filmCompany.Id);
                         //FilmCompany filmCompany = new FilmCompany(Filmbolag);
-                        FilmCompany filmCompany = context.FilmCompany.FirstOrDefault(x => x.Name == name);
+                        //FilmCompany filmCompany = context.FilmCompanies.FirstOrDefault(x => x.Name == Title);
 
-                        filmCompany.Movies.Add(film);
+                        context.Movies.Add(movie);
                         context.SaveChanges();
                         WriteLine("Film tillagd");
                         Thread.Sleep(2000); // 2 sec
@@ -117,19 +198,19 @@ namespace IMDb
         }
         private static void AddFilmCompany()
         {
-            Write("Namn: ");
+            Write("FilmCompanyNamn: ");
             string name = ReadLine();
             //FilmCompany filmCompany = context.FilmCompany
             //    .FirstOrDefault(FilmCompany => FilmCompany.Name == name);
             Clear();
-            if (context.FilmCompany.Any(x => x.Name == name))
+            if (context.FilmCompanies.Any(x => x.Name == name))
             {
                 WriteLine("Filmbolag finns redan");
             }
             else
             {
                 FilmCompany filmCompany = new FilmCompany(name);
-                context.FilmCompany.Add(filmCompany);
+                context.FilmCompanies.Add(filmCompany);
                 context.SaveChanges();
                 WriteLine("Filmbolag tillagd");
             }
@@ -138,7 +219,7 @@ namespace IMDb
         private static void DisplayActor()
         {
             {
-                List<Actor> actorList = context.Actor
+                List<Actor> actorList = context.Actors
                     .Include(Actor => Actor.Address)
                     .ToList();
 
@@ -148,7 +229,7 @@ namespace IMDb
 
                 foreach (Actor actor in actorList)
                 {
-                    Write($"{actor.firstName}, {actor.lastName}".PadRight(20, ' '));
+                    Write($"{actor.FirstName}, {actor.LastName}".PadRight(20, ' '));
 
                     Address address = actor.Address;
 
@@ -204,7 +285,7 @@ namespace IMDb
                     {
                         isCorrect = true;
                         Clear();
-                        if (context.Actor.Any(x => x.socialSecurityNumber == socialSecurityNumber))
+                        if (context.Actors.Any(x => x.SocialSecurityNumber == socialSecurityNumber))
                         {
                             WriteLine("Skådespelare finns redan");
                         }
@@ -212,7 +293,7 @@ namespace IMDb
                         {
                             Address address = new Address(street, city, postcode);
                             Actor actor = new Actor(firstName, lastName, socialSecurityNumber, address);
-                            context.Actor.Add(actor);
+                            context.Actors.Add(actor);
                             context.SaveChanges();
                             WriteLine("Skådespelare tillagd");
                         }

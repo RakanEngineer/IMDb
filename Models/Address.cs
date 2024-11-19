@@ -12,8 +12,7 @@ namespace IMDb.Models
         public string street { get; protected set; }
         public string city { get; protected set; }
         public string postcode { get; protected set; }
-        public int ActorId { get; protected set; }
-
+        //public int ActorId { get; protected set; }
 
         public Address(string street, string city, string postcode)
         {
